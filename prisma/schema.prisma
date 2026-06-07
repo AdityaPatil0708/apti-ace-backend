@@ -1,8 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
@@ -12,9 +7,135 @@ datasource db {
   provider = "postgresql"
 }
 
-model User{
-  id        Int       @id       @default(autoincrement())
-  email     String    @unique
-  name      String    
-  password  String
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PRO
+  CAMPUS
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String?
+  role      Role     @default(STUDENT)
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  resetTokens PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+enum Category {
+  APTITUDE
+  REASONING
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Topic {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  category    Category
+  description String?
+  isActive    Boolean  @default(true)
+
+  questions   Question[]
+  progress    UserProgress[]
+  leaderboard LeaderboardEntry[]
+}
+
+model Question {
+  id            Int        @id @default(autoincrement())
+  topicId       Int
+  text          String
+  optionA       String
+  optionB       String
+  optionC       String
+  optionD       String
+  correctOption String
+  explanation   String?
+  difficulty    Difficulty
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+
+  topic         Topic          @relation(fields: [topicId], references: [id])
+  testQuestions TestQuestion[]
+}
+
+model TestSession {
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  title           String
+  durationSeconds Int
+  startedAt       DateTime  @default(now())
+  submittedAt     DateTime?
+  score           Int?
+  totalQuestions  Int
+  correctCount    Int?
+  isPractice      Boolean
+
+  user      User           @relation(fields: [userId], references: [id])
+  questions TestQuestion[]
+}
+
+model TestQuestion {
+  id             Int     @id @default(autoincrement())
+  sessionId      Int
+  questionId     Int
+  selectedOption String?
+  isCorrect      Boolean?
+
+  session  TestSession @relation(fields: [sessionId], references: [id])
+  question Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([sessionId, questionId])
+}
+
+model UserProgress {
+  id                 Int      @id @default(autoincrement())
+  userId             Int
+  topicId            Int
+  questionsAttempted Int      @default(0)
+  questionsCorrect   Int      @default(0)
+  lastActivityAt     DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  topic Topic @relation(fields: [topicId], references: [id])
+
+  @@unique([userId, topicId])
+}
+
+model LeaderboardEntry {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  topicId   Int?
+  score     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  user  User   @relation(fields: [userId], references: [id])
+  topic Topic? @relation(fields: [topicId], references: [id])
+
+  @@unique([userId, topicId])
 }
